@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.zip
+.DS_Store
+*.local
+coverage/
+prompt-enhancer-design.md
+
