@@ -164,6 +164,9 @@ export function bootstrap(adapter: SiteAdapter): void {
   let origTop = 0;
   let moved = false;
 
+  let pressing = false;
+  let pointerId = -1;
+
   controlEl.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || !controlEl) return;
     suppressClick = false;
@@ -172,18 +175,31 @@ export function bootstrap(adapter: SiteAdapter): void {
     origTop = rect.top;
     startX = e.clientX;
     startY = e.clientY;
-    dragging = true;
+    pressing = true;
     moved = false;
-    controlEl.setPointerCapture(e.pointerId);
+    pointerId = e.pointerId;
+    // NOTE: do NOT capture the pointer here — capturing on press retargets the
+    // follow-up click to this container, so the sparkle/caret buttons never get
+    // their click. We only capture once a real drag starts (see pointermove).
   });
 
   controlEl.addEventListener("pointermove", (e) => {
-    if (!dragging || !controlEl) return;
+    if (!pressing || !controlEl) return;
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
     if (!moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return; // still a click
-    moved = true;
-    controlEl.classList.add("pe-wand--dragging");
+    if (!moved) {
+      // A genuine drag began — now capture so moves track off-element, and pause
+      // the auto-positioner.
+      moved = true;
+      dragging = true;
+      controlEl.classList.add("pe-wand--dragging");
+      try {
+        controlEl.setPointerCapture(pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
     const w = controlEl.offsetWidth;
     const h = controlEl.offsetHeight;
     const nx = clamp(origLeft + dx, EDGE_MARGIN, window.innerWidth - w - EDGE_MARGIN);
@@ -195,7 +211,10 @@ export function bootstrap(adapter: SiteAdapter): void {
   });
 
   const endDrag = (e: PointerEvent) => {
-    if (!dragging || !controlEl) return;
+    if (!pressing || !controlEl) return;
+    pressing = false;
+    if (!moved) return; // plain click — let the button's click handler run
+
     dragging = false;
     controlEl.classList.remove("pe-wand--dragging");
     try {
@@ -203,12 +222,10 @@ export function bootstrap(adapter: SiteAdapter): void {
     } catch {
       /* pointer already released */
     }
-    if (moved) {
-      // Persist the new spot and suppress the click that follows pointerup.
-      customPos = { x: lastLeft, y: lastTop };
-      saveSettings({ wandPosition: customPos });
-      suppressClick = true;
-    }
+    // Persist the new spot and suppress the click that follows pointerup.
+    customPos = { x: lastLeft, y: lastTop };
+    saveSettings({ wandPosition: customPos });
+    suppressClick = true;
   };
   controlEl.addEventListener("pointerup", endDrag);
   controlEl.addEventListener("pointercancel", endDrag);

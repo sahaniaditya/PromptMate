@@ -1,12 +1,11 @@
-import type { EnhanceContext } from "../../shared/types";
-
 export interface Provider {
   /**
-   * Streams the rewritten prompt. Calls onDelta with each text chunk as it
-   * arrives, and resolves with the full rewritten prompt when complete.
+   * Streams a completion for the given system + user messages. Calls onDelta with
+   * each text chunk as it arrives, and resolves with the full text when complete.
    */
-  enhance(
-    ctx: EnhanceContext,
+  stream(
+    system: string,
+    user: string,
     onDelta: (text: string) => void,
     signal: AbortSignal,
   ): Promise<string>;

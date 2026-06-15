@@ -1,5 +1,3 @@
-import type { EnhanceContext } from "../../shared/types";
-import { buildSystemPrompt, buildUserMessage } from "../triage/prompt";
 import type { Provider } from "./provider";
 
 const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
@@ -7,16 +5,17 @@ const ANTHROPIC_VERSION = "2023-06-01";
 
 export function makeAnthropicProvider(apiKey: string, model: string): Provider {
   return {
-    async enhance(
-      ctx: EnhanceContext,
+    async stream(
+      system: string,
+      user: string,
       onDelta: (text: string) => void,
       signal: AbortSignal,
     ): Promise<string> {
       const body = {
         model,
         max_tokens: 1024,
-        system: buildSystemPrompt(ctx.mode),
-        messages: [{ role: "user", content: buildUserMessage(ctx.prompt, ctx.selection) }],
+        system,
+        messages: [{ role: "user", content: user }],
         stream: true,
       };
 

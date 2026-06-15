@@ -1,4 +1,4 @@
-import type { EnhanceMode } from "../../shared/types";
+import type { EnhanceMode, GenerateParams, PromptLength } from "../../shared/types";
 
 const MODE_INSTRUCTIONS: Record<EnhanceMode, string> = {
   concise:
@@ -37,4 +37,34 @@ export function buildUserMessage(prompt: string, selection?: string): string {
     parts.push(`<selected_page_text>\n${selection.trim()}\n</selected_page_text>`);
   }
   return parts.join("\n\n");
+}
+
+// ── Prompt generation (the "Craft a prompt" feature) ─────────────────────────
+
+const LENGTH_GUIDANCE: Record<PromptLength, string> = {
+  short: "short — roughly 40–70 words, a single tight paragraph",
+  moderate: "moderate — roughly 100–160 words",
+  long: "long — roughly 220–320 words; brief sections or bullets are fine",
+};
+
+export function buildGenerateSystemPrompt(params: GenerateParams): string {
+  return `\
+You are an expert prompt engineer. Write ONE high-quality, ready-to-use LLM
+prompt based on the user's specification below.
+
+- Domain / type: ${params.promptType} — tailor the framing, terminology, and any
+  output-format guidance to this domain.
+- Target length: ${LENGTH_GUIDANCE[params.length]}.
+- Tone: ${params.tone}.
+
+Make the prompt self-contained and effective: set the role/context, state the
+task clearly, and add only constraints or formatting guidance that genuinely help
+for this type. Do not over-engineer or pad it.
+
+Output ONLY the generated prompt as plain text. No preamble, no quotes, no
+meta-commentary, no explanation.`;
+}
+
+export function buildGenerateUserMessage(params: GenerateParams): string {
+  return `Generate a prompt for: ${params.description.trim()}`;
 }

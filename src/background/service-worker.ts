@@ -1,6 +1,6 @@
 import type { ContentToWorker } from "../shared/messages";
 import { ENHANCE_PORT } from "../shared/messages";
-import { runEnhance } from "./orchestrator";
+import { handlePortMessage } from "./orchestrator";
 
 // The panel's "Open settings" link asks the worker to open the options page
 chrome.runtime.onMessage.addListener((msg) => {
@@ -17,11 +17,11 @@ chrome.commands.onCommand.addListener(async (command) => {
   });
 });
 
-// Handle long-lived port for streaming enhance calls
+// Handle long-lived port for streaming enhance + generate calls
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== ENHANCE_PORT) return;
 
   port.onMessage.addListener((message: ContentToWorker) => {
-    runEnhance(message, port).catch(console.error);
+    handlePortMessage(message, port).catch(console.error);
   });
 });

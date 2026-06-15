@@ -1,6 +1,8 @@
-import type { EnhanceContext, ErrorCode } from "./types";
+import type { EnhanceContext, ErrorCode, GenerateParams } from "./types";
 
-export type ContentToWorker = { type: "ENHANCE_REQUEST"; ctx: EnhanceContext };
+export type ContentToWorker =
+  | { type: "ENHANCE_REQUEST"; ctx: EnhanceContext }
+  | { type: "GENERATE_REQUEST"; params: GenerateParams };
 
 export type WorkerToContent =
   | { type: "STREAM_START" }

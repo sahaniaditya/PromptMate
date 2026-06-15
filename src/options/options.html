@@ -48,7 +48,7 @@
 
     .hint { font-size: 12px; color: #9ca3af; line-height: 1.4; }
 
-    select, input[type="text"], input[type="password"] {
+    select, input[type="text"], input[type="password"], textarea {
       width: 100%;
       padding: 9px 12px;
       border: 1px solid #d1d5db;
@@ -60,7 +60,41 @@
       outline: none;
       transition: border-color 0.15s;
     }
-    select:focus, input:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+    select:focus, input:focus, textarea:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+
+    textarea { resize: vertical; min-height: 60px; line-height: 1.4; }
+
+    .row2 { display: flex; gap: 10px; }
+    .row2 > .field { flex: 1; min-width: 0; }
+
+    .gen-output {
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #111827;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 220px;
+      overflow-y: auto;
+      min-height: 40px;
+    }
+    .gen-output-wrap { display: none; flex-direction: column; gap: 8px; }
+    .gen-output-wrap.visible { display: flex; }
+    .gen-output-bar { display: flex; gap: 8px; align-items: center; }
+    .btn-small {
+      padding: 6px 12px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      color: #374151;
+    }
+    .btn-small:hover { background: #f3f4f6; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .toggle-row {
       display: flex;
@@ -101,6 +135,36 @@
 
     .divider { border: none; border-top: 1px solid #f3f4f6; }
 
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: #f3f4f6;
+      border-radius: 10px;
+      padding: 4px;
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 10px;
+      border: none;
+      background: transparent;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #6b7280;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s, color 0.15s;
+    }
+    .tab:hover { color: #374151; }
+    .tab.active {
+      background: #fff;
+      color: #6d28d9;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .tab-panel { display: none; flex-direction: column; gap: 20px; }
+    .tab-panel.active { display: flex; }
+
     .actions { display: flex; gap: 10px; align-items: center; }
 
     .btn {
@@ -117,15 +181,15 @@
     .btn-ghost { background: none; color: #6b7280; }
     .btn-ghost:hover { background: #f3f4f6; }
 
-    #status {
+    #status, #genStatus {
       font-size: 13px;
       color: #059669;
       font-weight: 500;
       opacity: 0;
       transition: opacity 0.3s;
     }
-    #status.visible { opacity: 1; }
-    #status.error { color: #dc2626; }
+    #status.visible, #genStatus.visible { opacity: 1; }
+    #status.error, #genStatus.error { color: #dc2626; }
 
     .key-field { position: relative; }
     .key-field input { padding-right: 36px; }
@@ -160,6 +224,14 @@
 
     <hr class="divider" />
 
+    <!-- Tabs -->
+    <div class="tabs" role="tablist">
+      <button class="tab active" id="tab-settings" role="tab" data-panel="panel-settings">Settings</button>
+      <button class="tab" id="tab-generate" role="tab" data-panel="panel-generate">Craft a prompt</button>
+    </div>
+
+    <!-- Settings panel -->
+    <div class="tab-panel active" id="panel-settings" role="tabpanel">
     <!-- Provider -->
     <section>
       <h2>Provider</h2>
@@ -225,6 +297,66 @@
       <button class="btn btn-ghost" id="reset">Reset to defaults</button>
       <span id="status"></span>
     </div>
+    </div><!-- /panel-settings -->
+
+    <!-- Craft a prompt panel -->
+    <div class="tab-panel" id="panel-generate" role="tabpanel">
+    <section>
+      <div class="field-group" style="margin-top:4px;">
+        <div class="field">
+          <label for="genDescription">What's the prompt about?</label>
+          <textarea id="genDescription" placeholder="e.g. a prompt for marketing a new running shoe"></textarea>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="genType">Type</label>
+            <select id="genType">
+              <option value="general">General</option>
+              <option value="coding">Coding</option>
+              <option value="marketing">Marketing</option>
+              <option value="research">Research</option>
+              <option value="education">Education</option>
+              <option value="professional">Professional</option>
+              <option value="personal">Personal</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="genTone">Tone</label>
+            <select id="genTone">
+              <option value="professional">Professional</option>
+              <option value="formal">Formal</option>
+              <option value="casual">Casual</option>
+              <option value="friendly">Friendly</option>
+              <option value="persuasive">Persuasive</option>
+              <option value="technical">Technical</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="genLength">Length</label>
+          <select id="genLength">
+            <option value="short">Short (~40–70 words)</option>
+            <option value="moderate" selected>Moderate (~100–160 words)</option>
+            <option value="long">Long (~220–320 words)</option>
+          </select>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="genBtn">Generate prompt</button>
+          <span id="genStatus"></span>
+        </div>
+
+        <div class="gen-output-wrap" id="genOutputWrap">
+          <div class="gen-output" id="genOutput"></div>
+          <div class="gen-output-bar">
+            <button class="btn-small" id="genCopy">Copy</button>
+          </div>
+        </div>
+      </div>
+    </section>
+    </div><!-- /panel-generate -->
   </div>
 
   <script src="./options.ts" type="module"></script>

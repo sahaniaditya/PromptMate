@@ -1,21 +1,20 @@
-import type { EnhanceContext } from "../../shared/types";
-import { buildSystemPrompt, buildUserMessage } from "../triage/prompt";
 import type { Provider } from "./provider";
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
 export function makeOpenAIProvider(apiKey: string, model: string): Provider {
   return {
-    async enhance(
-      ctx: EnhanceContext,
+    async stream(
+      system: string,
+      user: string,
       onDelta: (text: string) => void,
       signal: AbortSignal,
     ): Promise<string> {
       const body = {
         model,
         messages: [
-          { role: "system", content: buildSystemPrompt(ctx.mode) },
-          { role: "user", content: buildUserMessage(ctx.prompt, ctx.selection) },
+          { role: "system", content: system },
+          { role: "user", content: user },
         ],
         stream: true,
         max_tokens: 1024,

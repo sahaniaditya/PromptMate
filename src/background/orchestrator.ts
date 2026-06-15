@@ -5,6 +5,12 @@ import { makeAnthropicProvider } from "./providers/anthropic";
 import { makeOpenAIProvider } from "./providers/openai";
 import type { Provider } from "./providers/provider";
 import { checkRateLimit } from "./rate-limit";
+import {
+  buildGenerateSystemPrompt,
+  buildGenerateUserMessage,
+  buildSystemPrompt,
+  buildUserMessage,
+} from "./triage/prompt";
 
 function classifyError(err: unknown): ErrorCode {
   if (err instanceof DOMException && err.name === "AbortError") return "ABORT";
@@ -23,11 +29,22 @@ function makeProvider(settings: Awaited<ReturnType<typeof loadSettings>>): Provi
   return makeAnthropicProvider(key, settings.model);
 }
 
-export async function runEnhance(
+export async function handlePortMessage(
   message: ContentToWorker,
   port: chrome.runtime.Port,
 ): Promise<void> {
-  if (message.type !== "ENHANCE_REQUEST") return;
+  // Build the system + user messages for whichever request this is.
+  let system: string;
+  let user: string;
+  if (message.type === "ENHANCE_REQUEST") {
+    system = buildSystemPrompt(message.ctx.mode);
+    user = buildUserMessage(message.ctx.prompt, message.ctx.selection);
+  } else if (message.type === "GENERATE_REQUEST") {
+    system = buildGenerateSystemPrompt(message.params);
+    user = buildGenerateUserMessage(message.params);
+  } else {
+    return;
+  }
 
   const settings = await loadSettings();
 
@@ -59,8 +76,9 @@ export async function runEnhance(
   port.postMessage(startMsg);
 
   try {
-    const text = await provider.enhance(
-      message.ctx,
+    const text = await provider.stream(
+      system,
+      user,
       (delta) => {
         const msg: WorkerToContent = { type: "STREAM_DELTA", text: delta };
         port.postMessage(msg);
