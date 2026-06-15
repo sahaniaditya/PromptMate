@@ -182,9 +182,15 @@ $("genBtn").addEventListener("click", () => {
 
 $("genCopy").addEventListener("click", async () => {
   if (!generated) return;
+  const btn = $("genCopy");
   try {
     await navigator.clipboard.writeText(generated);
-    showGenStatus("Copied to clipboard.");
+    btn.classList.add("copied");
+    btn.setAttribute("title", "Copied!");
+    setTimeout(() => {
+      btn.classList.remove("copied");
+      btn.setAttribute("title", "Copy to clipboard");
+    }, 1500);
   } catch {
     showGenStatus("Couldn't copy.", true);
   }

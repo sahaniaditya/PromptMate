@@ -67,33 +67,64 @@
     .row2 { display: flex; gap: 10px; }
     .row2 > .field { flex: 1; min-width: 0; }
 
+    .gen-output-wrap { display: none; }
+    .gen-output-wrap.visible { display: block; }
+
+    .gen-output-card {
+      position: relative;
+      border: 1px solid #e9e5fb;
+      background: linear-gradient(180deg, #faf9ff 0%, #f9fafb 100%);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(124, 58, 237, 0.06);
+    }
+    .gen-output-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 12px 0;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #8b7bb8;
+    }
     .gen-output {
-      border: 1px solid #e5e7eb;
-      background: #f9fafb;
-      border-radius: 8px;
-      padding: 10px 12px;
+      padding: 8px 14px 14px;
       font-size: 13px;
-      color: #111827;
+      line-height: 1.5;
+      color: #1f2937;
       white-space: pre-wrap;
       word-break: break-word;
-      max-height: 220px;
+      max-height: 260px;
       overflow-y: auto;
-      min-height: 40px;
+      min-height: 36px;
     }
-    .gen-output-wrap { display: none; flex-direction: column; gap: 8px; }
-    .gen-output-wrap.visible { display: flex; }
-    .gen-output-bar { display: flex; gap: 8px; align-items: center; }
-    .btn-small {
-      padding: 6px 12px;
-      border-radius: 7px;
-      font-size: 12px;
-      font-weight: 500;
+
+    .gen-copy-icon {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #e5e7eb;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 8px;
       cursor: pointer;
-      border: 1px solid #d1d5db;
-      background: #fff;
-      color: #374151;
+      color: #6b7280;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+      backdrop-filter: blur(2px);
     }
-    .btn-small:hover { background: #f3f4f6; }
+    .gen-copy-icon:hover { color: #6d28d9; background: #f5f3ff; border-color: #ddd6fe; }
+    .gen-copy-icon:active { transform: scale(0.92); }
+    .gen-copy-icon svg { display: block; pointer-events: none; }
+    .gen-copy-icon .icon-check { display: none; }
+    .gen-copy-icon.copied { color: #059669; border-color: #a7f3d0; background: #ecfdf5; }
+    .gen-copy-icon.copied .icon-clip { display: none; }
+    .gen-copy-icon.copied .icon-check { display: block; }
+
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .toggle-row {
@@ -349,9 +380,20 @@
         </div>
 
         <div class="gen-output-wrap" id="genOutputWrap">
-          <div class="gen-output" id="genOutput"></div>
-          <div class="gen-output-bar">
-            <button class="btn-small" id="genCopy">Copy</button>
+          <div class="gen-output-card">
+            <div class="gen-output-head">Generated prompt</div>
+            <button class="gen-copy-icon" id="genCopy" type="button" title="Copy to clipboard" aria-label="Copy to clipboard">
+              <svg class="icon-clip" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              <svg class="icon-check" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6 9 17l-5-5"/>
+              </svg>
+            </button>
+            <div class="gen-output" id="genOutput"></div>
           </div>
         </div>
       </div>
