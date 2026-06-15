@@ -81,34 +81,31 @@ export function bootstrap(adapter: SiteAdapter): void {
     defaultMode = s.defaultMode;
   });
 
-  const reposition = () => {
+  // Insert the wand as a real flex sibling inside the host's trailing button
+  // group. The browser then aligns and reflows it automatically — no positioning
+  // JS, no scroll/resize observers. We only re-insert if the SPA wipes it out.
+  const ensureInjected = () => {
+    if (controlEl && controlEl.isConnected) return;
+
     const sendBtn = adapter.findButtonAnchor();
+    if (!sendBtn) return;
 
-    // No send button on screen → hide the control if it exists.
-    if (!sendBtn) {
-      if (controlEl) controlEl.style.display = "none";
-      return;
-    }
-
-    // Create the floating control once.
-    if (!controlEl || !document.body.contains(controlEl)) {
+    const group = findTrailingGroup(sendBtn);
+    if (!controlEl) {
       controlEl = createWandControl(
         () => onTrigger(adapter, defaultMode),
         () => toggleMenu(adapter),
       );
-      document.body.appendChild(controlEl);
     }
-
-    anchorLeftOfSend(sendBtn, controlEl);
+    // Sit first in the trailing group so the order reads: wand · mic · send.
+    group.insertBefore(controlEl, group.firstChild);
   };
 
-  reposition();
+  ensureInjected();
 
-  // Re-anchor on any layout change: SPA re-renders, input growing, scroll, resize.
-  const observer = new MutationObserver(() => reposition());
-  observer.observe(document.body, { childList: true, subtree: true, attributes: true });
-  window.addEventListener("scroll", reposition, { passive: true, capture: true });
-  window.addEventListener("resize", reposition, { passive: true });
+  // Re-insert on SPA re-renders that replace the composer/toolbar.
+  const observer = new MutationObserver(() => ensureInjected());
+  observer.observe(document.body, { childList: true, subtree: true });
 
   // Hotkey forwarded from service worker → run the default mode.
   chrome.runtime.onMessage.addListener((msg) => {
@@ -136,54 +133,26 @@ function setWandBusy(busy: boolean): void {
   controlEl.classList.toggle("pe-wand--busy", busy);
 }
 
-const WAND_GAP = 6;
-
 /**
- * Positions the floating control fixed to the viewport, vertically centered on
- * the send button and just to the left of the whole trailing button cluster
- * (mic, etc.), so it never overlaps the buttons already beside send.
- * Layout-independent: works no matter how the host nests its toolbar buttons.
+ * Finds the trailing button group: the smallest ancestor of the send button
+ * that holds 2+ interactive controls (mic + send / voice) but is still a tight
+ * group, not the whole composer bar. We inject the wand into this container as a
+ * flex sibling so it aligns and reflows with the host's own buttons.
  */
-function anchorLeftOfSend(sendBtn: HTMLElement, control: HTMLElement): void {
-  const sr = sendBtn.getBoundingClientRect();
-
-  // Send button not laid out yet (hidden / zero-size) → hide the control.
-  if (sr.width === 0 && sr.height === 0) {
-    control.style.display = "none";
-    return;
-  }
-
-  const centerY = sr.top + sr.height / 2;
+function findTrailingGroup(sendBtn: HTMLElement): HTMLElement {
   const scope = sendBtn.closest("form") ?? document.body;
+  const formW = scope.getBoundingClientRect().width || window.innerWidth;
 
-  // Collect buttons on the same row that sit to the LEFT of send (e.g. mic).
-  const leftButtons: DOMRect[] = [];
-  scope.querySelectorAll("button").forEach((b) => {
-    if (b === control || control.contains(b)) return;
-    const br = b.getBoundingClientRect();
-    if (br.width === 0) return;
-    const sameRow = Math.abs(br.top + br.height / 2 - centerY) <= sr.height * 0.75;
-    if (sameRow && br.right <= sr.left + 1) leftButtons.push(br);
-  });
-
-  // Find the contiguous cluster directly to send's left (no big gaps), and take
-  // its leftmost edge as the anchor. Sort rightmost-first and chain leftward.
-  leftButtons.sort((a, b) => b.left - a.left);
-  let leftEdge = sr.left;
-  for (const br of leftButtons) {
-    if (leftEdge - br.right <= 48) {
-      leftEdge = Math.min(leftEdge, br.left);
-    } else {
-      break; // a wide gap → start of an unrelated group; stop here
-    }
+  let node: HTMLElement | null = sendBtn.parentElement;
+  let best: HTMLElement = sendBtn.parentElement ?? sendBtn;
+  for (let i = 0; i < 5 && node && node !== scope; i++) {
+    const count = node.querySelectorAll("button, [role='button']").length;
+    const w = node.getBoundingClientRect().width;
+    // A genuine trailing cluster: multiple controls, but not the full-width bar.
+    if (count >= 2 && w <= formW * 0.6) best = node;
+    node = node.parentElement;
   }
-
-  const cw = control.offsetWidth || 58;
-  const ch = control.offsetHeight || 36;
-  control.style.display = "";
-  control.style.position = "fixed";
-  control.style.top = `${sr.top + (sr.height - ch) / 2}px`;
-  control.style.left = `${leftEdge - cw - WAND_GAP}px`;
+  return best;
 }
 
 /**

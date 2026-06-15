@@ -5,17 +5,18 @@
 .pe-wand {
   display: inline-flex !important;
   align-items: stretch;
-  height: 36px;
+  align-self: center;
+  flex: 0 0 auto;
+  height: 34px;
   padding: 0;
-  margin: 0;
+  margin: 0 4px 0 0;
   background: rgba(167, 139, 250, 0.12);
   border: 1px solid rgba(167, 139, 250, 0.35);
   border-radius: 999px;
   overflow: hidden;
   box-sizing: border-box;
+  vertical-align: middle;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  /* Floating, anchored to the send button's screen position by the injector */
-  z-index: 2147483646;
 }
 
 .pe-wand__main,
