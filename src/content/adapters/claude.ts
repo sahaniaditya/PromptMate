@@ -16,8 +16,9 @@ export const claudeAdapter: SiteAdapter = {
 
   findButtonAnchor() {
     return (
-      document.querySelector<HTMLElement>("button[aria-label='Send Message']")?.parentElement ??
-      document.querySelector<HTMLElement>("button[type='submit']")?.parentElement ??
+      document.querySelector<HTMLElement>("button[aria-label='Send Message']") ??
+      document.querySelector<HTMLElement>("button[aria-label='Send message']") ??
+      document.querySelector<HTMLElement>("fieldset button[type='submit']") ??
       null
     );
   },

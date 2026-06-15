@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS: Settings = {
   apiKey: undefined,
   proxyUrl: undefined,
   hotkeyEnabled: true,
-  autoDismissLeaveAlone: true,
+  defaultMode: "refine",
 };
 
 export async function loadSettings(): Promise<Settings> {

@@ -1,117 +1,273 @@
 import type { SiteAdapter } from "./adapters/adapter";
 import type { WorkerToContent } from "../shared/messages";
 import { ENHANCE_PORT } from "../shared/messages";
-import type { EnhanceContext } from "../shared/types";
-import { Panel } from "./panel/panel";
+import type { EnhanceContext, EnhanceMode } from "../shared/types";
+import { loadSettings, saveSettings } from "../shared/storage";
+import { openModeMenu, showErrorToast, showUndoToast } from "./panel/panel";
 
 let inflight = false;
-let panel: Panel | null = null;
+let defaultMode: EnhanceMode = "refine";
 
 function getSelection(): string | undefined {
   const sel = window.getSelection()?.toString().trim();
   return sel || undefined;
 }
 
-function onTrigger(adapter: SiteAdapter): void {
+function onTrigger(adapter: SiteAdapter, mode: EnhanceMode): void {
   if (inflight) return;
 
   const input = adapter.findInput();
   if (!input) return;
 
-  const prompt = adapter.readPrompt(input).trim();
-  if (!prompt) return;
+  const original = adapter.readPrompt(input).trim();
+  if (!original) return;
 
   const ctx: EnhanceContext = {
-    prompt,
+    prompt: original,
     selection: getSelection(),
     siteId: adapter.id,
+    mode,
   };
 
   inflight = true;
+  setWandBusy(true);
 
-  // Ensure panel exists and show spinner
-  if (!panel) panel = new Panel();
-  panel.showLoading();
-
+  let streamed = "";
   const port = chrome.runtime.connect({ name: ENHANCE_PORT });
+
+  const finish = () => {
+    inflight = false;
+    setWandBusy(false);
+  };
 
   port.onMessage.addListener((msg: WorkerToContent) => {
     switch (msg.type) {
       case "STREAM_START":
-        // Spinner is already showing
         break;
 
       case "STREAM_DELTA":
-        panel!.onDelta(msg.text);
+        streamed += msg.text;
+        adapter.writePrompt(input, streamed);
         break;
 
-      case "RESULT":
-        inflight = false;
-        panel!.showResult(msg.result, (improved) => {
-          adapter.writePrompt(input, improved);
-        });
+      case "DONE":
+        finish();
+        // Ensure the box holds the exact final text.
+        adapter.writePrompt(input, msg.text);
+        showUndoToast(() => adapter.writePrompt(input, original));
+        port.disconnect();
         break;
 
       case "ERROR":
-        inflight = false;
-        panel!.showError(msg.code, msg.message, () => {
-          // Retry
-          onTrigger(adapter);
-        });
+        finish();
+        // Roll back anything streamed in.
+        adapter.writePrompt(input, original);
+        showErrorToast(msg.code, msg.message, () => onTrigger(adapter, mode));
+        port.disconnect();
         break;
     }
   });
 
-  port.onDisconnect.addListener(() => {
-    inflight = false;
-  });
+  port.onDisconnect.addListener(finish);
 
   port.postMessage({ type: "ENHANCE_REQUEST", ctx });
 }
 
-export function bootstrap(adapter: SiteAdapter): void {
-  const tryInject = () => {
-    const anchor = adapter.findButtonAnchor();
-    if (!anchor) return;
-    if (anchor.querySelector(".pe-wand")) return; // already injected
+let controlEl: HTMLElement | null = null;
+let closeMenu: (() => void) | null = null;
 
-    const btn = createWandButton(() => onTrigger(adapter));
-    anchor.style.position = "relative";
-    anchor.appendChild(btn);
+export function bootstrap(adapter: SiteAdapter): void {
+  loadSettings().then((s) => {
+    defaultMode = s.defaultMode;
+  });
+
+  const reposition = () => {
+    const sendBtn = adapter.findButtonAnchor();
+
+    // No send button on screen → hide the control if it exists.
+    if (!sendBtn) {
+      if (controlEl) controlEl.style.display = "none";
+      return;
+    }
+
+    // Create the floating control once.
+    if (!controlEl || !document.body.contains(controlEl)) {
+      controlEl = createWandControl(
+        () => onTrigger(adapter, defaultMode),
+        () => toggleMenu(adapter),
+      );
+      document.body.appendChild(controlEl);
+    }
+
+    anchorLeftOfSend(sendBtn, controlEl);
   };
 
-  tryInject();
-  const observer = new MutationObserver(() => tryInject());
-  observer.observe(document.body, { childList: true, subtree: true });
+  reposition();
 
-  // Hotkey forwarded from service worker as a simple runtime message
+  // Re-anchor on any layout change: SPA re-renders, input growing, scroll, resize.
+  const observer = new MutationObserver(() => reposition());
+  observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+  window.addEventListener("scroll", reposition, { passive: true, capture: true });
+  window.addEventListener("resize", reposition, { passive: true });
+
+  // Hotkey forwarded from service worker → run the default mode.
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === "HOTKEY_ENHANCE") onTrigger(adapter);
+    if (msg.type === "HOTKEY_ENHANCE") onTrigger(adapter, defaultMode);
   });
 }
 
-function createWandButton(onClick: () => void): HTMLButtonElement {
-  const btn = document.createElement("button");
-  btn.className = "pe-wand";
-  btn.type = "button";
-  btn.title = "Enhance prompt (Ctrl+Shift+E)";
-  btn.setAttribute("aria-label", "Enhance prompt with PromptMate");
-  btn.innerHTML = wandSvg();
-  btn.addEventListener("click", (e) => {
+function toggleMenu(adapter: SiteAdapter): void {
+  if (closeMenu) {
+    closeMenu();
+    closeMenu = null;
+    return;
+  }
+  if (!controlEl) return;
+  closeMenu = openModeMenu(controlEl, defaultMode, (mode) => {
+    closeMenu = null;
+    defaultMode = mode;
+    saveSettings({ defaultMode: mode });
+    onTrigger(adapter, mode);
+  });
+}
+
+function setWandBusy(busy: boolean): void {
+  if (!controlEl) return;
+  controlEl.classList.toggle("pe-wand--busy", busy);
+}
+
+const WAND_GAP = 6;
+
+/**
+ * Positions the floating control fixed to the viewport, vertically centered on
+ * the send button and just to the left of the whole trailing button cluster
+ * (mic, etc.), so it never overlaps the buttons already beside send.
+ * Layout-independent: works no matter how the host nests its toolbar buttons.
+ */
+function anchorLeftOfSend(sendBtn: HTMLElement, control: HTMLElement): void {
+  const sr = sendBtn.getBoundingClientRect();
+
+  // Send button not laid out yet (hidden / zero-size) → hide the control.
+  if (sr.width === 0 && sr.height === 0) {
+    control.style.display = "none";
+    return;
+  }
+
+  const centerY = sr.top + sr.height / 2;
+  const scope = sendBtn.closest("form") ?? document.body;
+
+  // Collect buttons on the same row that sit to the LEFT of send (e.g. mic).
+  const leftButtons: DOMRect[] = [];
+  scope.querySelectorAll("button").forEach((b) => {
+    if (b === control || control.contains(b)) return;
+    const br = b.getBoundingClientRect();
+    if (br.width === 0) return;
+    const sameRow = Math.abs(br.top + br.height / 2 - centerY) <= sr.height * 0.75;
+    if (sameRow && br.right <= sr.left + 1) leftButtons.push(br);
+  });
+
+  // Find the contiguous cluster directly to send's left (no big gaps), and take
+  // its leftmost edge as the anchor. Sort rightmost-first and chain leftward.
+  leftButtons.sort((a, b) => b.left - a.left);
+  let leftEdge = sr.left;
+  for (const br of leftButtons) {
+    if (leftEdge - br.right <= 48) {
+      leftEdge = Math.min(leftEdge, br.left);
+    } else {
+      break; // a wide gap → start of an unrelated group; stop here
+    }
+  }
+
+  const cw = control.offsetWidth || 58;
+  const ch = control.offsetHeight || 36;
+  control.style.display = "";
+  control.style.position = "fixed";
+  control.style.top = `${sr.top + (sr.height - ch) / 2}px`;
+  control.style.left = `${leftEdge - cw - WAND_GAP}px`;
+}
+
+/**
+ * Builds the split-button control: one rounded pill with a sparkle zone (runs
+ * the default mode) and a caret zone (opens the mode menu).
+ */
+function createWandControl(onRun: () => void, onToggleMenu: () => void): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "pe-wand";
+
+  const main = document.createElement("button");
+  main.className = "pe-wand__main";
+  main.type = "button";
+  main.title = "Enhance prompt (Ctrl+Shift+E)";
+  main.setAttribute("aria-label", "Enhance prompt with PromptMate");
+  main.appendChild(buildSparkleSvg());
+  main.appendChild(buildSpinner());
+  main.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    onClick();
+    onRun();
   });
-  return btn;
+
+  const caret = document.createElement("button");
+  caret.className = "pe-wand__caret";
+  caret.type = "button";
+  caret.title = "Choose enhance mode";
+  caret.setAttribute("aria-label", "Choose enhance mode");
+  caret.appendChild(buildCaretSvg());
+  caret.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onToggleMenu();
+  });
+
+  wrap.appendChild(main);
+  wrap.appendChild(caret);
+  return wrap;
 }
 
-function wandSvg(): string {
-  // Safe static SVG — no user data, no innerHTML risk
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/>
-    <path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/>
-    <path d="M17.8 6.2 19 5"/><path d="m13 13 9 9"/>
-    <path d="M13.2 6.2 12 5"/>
-  </svg>`;
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function makeSvg(width: number, attrs: Record<string, string>, paths: string[]): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("width", String(width));
+  svg.setAttribute("height", String(width));
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  for (const [k, v] of Object.entries(attrs)) svg.setAttribute(k, v);
+  for (const d of paths) {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", d);
+    svg.appendChild(path);
+  }
+  return svg;
+}
+
+/**
+ * Sparkle icon, built via DOM APIs (no innerHTML) so it works on sites enforcing
+ * Trusted Types CSP (Gemini/Google, ChatGPT).
+ */
+function buildSparkleSvg(): SVGSVGElement {
+  const svg = makeSvg(20, { fill: "currentColor" }, [
+    "M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z",
+    "M18.5 14l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z",
+    "M5 4l.6 1.6L7 6l-1.4.4L5 8l-.6-1.6L3 6l1.4-.4L5 4z",
+  ]);
+  svg.classList.add("pe-wand__icon");
+  return svg;
+}
+
+function buildCaretSvg(): SVGSVGElement {
+  const svg = makeSvg(14, {
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": "2.5",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+  }, ["M6 9l6 6 6-6"]);
+  return svg;
+}
+
+function buildSpinner(): HTMLSpanElement {
+  const span = document.createElement("span");
+  span.className = "pe-wand__spinner";
+  return span;
 }

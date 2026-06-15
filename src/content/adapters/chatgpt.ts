@@ -16,8 +16,9 @@ export const chatgptAdapter: SiteAdapter = {
 
   findButtonAnchor() {
     return (
-      document.querySelector<HTMLElement>("button[data-testid='send-button']")?.parentElement ??
-      document.querySelector<HTMLElement>("button[aria-label='Send prompt']")?.parentElement ??
+      document.querySelector<HTMLElement>("button[data-testid='send-button']") ??
+      document.querySelector<HTMLElement>("button[aria-label='Send prompt']") ??
+      document.querySelector<HTMLElement>("button[aria-label='Send message']") ??
       null
     );
   },

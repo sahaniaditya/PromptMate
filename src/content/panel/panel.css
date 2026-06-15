@@ -1,334 +1,180 @@
-/* PromptMate — injected panel styles */
+/* PromptMate — injected content styles */
 /* All selectors are prefixed with .pe- to avoid host-site collisions */
 
-/* ── Root container ──────────────────────────────────────────────────────── */
-.pe-root {
-  position: fixed;
-  bottom: 80px;
-  right: 24px;
-  z-index: 2147483647; /* max z-index */
-  width: 420px;
-  max-width: calc(100vw - 32px);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #1a1a1a;
-  pointer-events: none; /* panel children re-enable */
-}
-
-/* ── Panel card ─────────────────────────────────────────────────────────── */
-.pe-panel {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.08);
-  padding: 16px;
-  pointer-events: all;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.pe-panel--error {
-  border-color: #fca5a5;
-}
-
-/* ── Header ─────────────────────────────────────────────────────────────── */
-.pe-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pe-title {
-  font-weight: 600;
-  font-size: 13px;
-  color: #6d28d9;
-  flex: 1;
-}
-
-.pe-badge {
-  font-size: 11px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #ede9fe;
-  color: #5b21b6;
-}
-
-.pe-badge--rewrite {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.pe-close {
-  background: none;
-  border: none;
-  padding: 2px 6px;
-  cursor: pointer;
-  color: #9ca3af;
-  font-size: 14px;
-  border-radius: 4px;
-  line-height: 1;
-}
-.pe-close:hover { color: #374151; background: #f3f4f6; }
-
-/* ── Labels ─────────────────────────────────────────────────────────────── */
-.pe-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #6b7280;
-}
-
-/* ── Improved prompt box ─────────────────────────────────────────────────── */
-.pe-improved {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 10px 12px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 200px;
-  overflow-y: auto;
-  font-size: 13px;
-  color: #111827;
-  outline: none;
-}
-
-.pe-improved--editable {
-  border-color: #7c3aed;
-  background: #faf5ff;
-}
-
-/* ── Assumptions list ───────────────────────────────────────────────────── */
-.pe-assumptions {
+/* ── Split-button control (sparkle + caret, one pill) ────────────────────── */
+.pe-wand {
+  display: inline-flex !important;
+  align-items: stretch;
+  height: 36px;
+  padding: 0;
   margin: 0;
-  padding-left: 18px;
-  color: #4b5563;
-  font-size: 13px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* ── Actions row ────────────────────────────────────────────────────────── */
-.pe-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.pe-btn {
-  padding: 7px 14px;
-  border-radius: 7px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  border: none;
-  transition: background 0.15s, opacity 0.15s;
-  white-space: nowrap;
-}
-
-.pe-btn--primary {
-  background: #7c3aed;
-  color: #fff;
-}
-.pe-btn--primary:hover { background: #6d28d9; }
-
-.pe-btn--secondary {
-  background: #f3f4f6;
-  color: #374151;
-}
-.pe-btn--secondary:hover { background: #e5e7eb; }
-
-.pe-btn--ghost {
-  background: transparent;
-  color: #6b7280;
-}
-.pe-btn--ghost:hover { background: #f9fafb; }
-
-/* ── Questions ──────────────────────────────────────────────────────────── */
-.pe-question {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pe-question-text {
-  font-size: 13px;
-  font-weight: 500;
-  color: #111827;
-}
-
-.pe-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.pe-chip {
-  padding: 5px 12px;
+  background: rgba(167, 139, 250, 0.12);
+  border: 1px solid rgba(167, 139, 250, 0.35);
   border-radius: 999px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  font-size: 12px;
-  cursor: pointer;
-  color: #374151;
-  transition: border-color 0.15s, background 0.15s;
-}
-.pe-chip:hover { border-color: #7c3aed; }
-.pe-chip--active {
-  border-color: #7c3aed;
-  background: #ede9fe;
-  color: #5b21b6;
-  font-weight: 500;
-}
-
-.pe-freeform {
-  width: 100%;
+  overflow: hidden;
   box-sizing: border-box;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 13px;
-  font-family: inherit;
-  resize: vertical;
-  outline: none;
-  transition: border-color 0.15s;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Floating, anchored to the send button's screen position by the injector */
+  z-index: 2147483646;
 }
-.pe-freeform:focus { border-color: #7c3aed; }
 
-/* ── Loading state ──────────────────────────────────────────────────────── */
-.pe-loading {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-  padding: 14px 16px;
-  display: flex;
+.pe-wand__main,
+.pe-wand__caret {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  pointer-events: all;
-  color: #6b7280;
-  font-size: 13px;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #a78bfa;
+  transition: color 0.15s, background 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+  box-shadow: none;
 }
 
-.pe-loading-preview {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  padding: 16px;
-  pointer-events: all;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.pe-wand__main {
+  width: 34px;
+  border-radius: 999px 0 0 999px;
 }
 
-.pe-preview-text {
-  font-size: 13px;
-  color: #374151;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 160px;
-  overflow-y: auto;
-  opacity: 0.8;
+.pe-wand__caret {
+  width: 22px;
+  border-radius: 0 999px 999px 0;
+  border-left: 1px solid rgba(167, 139, 250, 0.3);
 }
 
-/* ── Spinner ────────────────────────────────────────────────────────────── */
-.pe-spinner,
-.pe-spinner-sm {
-  border: 2px solid #e5e7eb;
-  border-top-color: #7c3aed;
+.pe-wand__main:hover,
+.pe-wand__caret:hover {
+  color: #c4b5fd;
+  background: rgba(167, 139, 250, 0.2);
+}
+
+.pe-wand__main:active,
+.pe-wand__caret:active {
+  background: rgba(167, 139, 250, 0.3);
+}
+
+.pe-wand__icon,
+.pe-wand__caret svg {
+  display: block;
+  pointer-events: none;
+}
+
+/* Busy state: hide sparkle, show spinner */
+.pe-wand__spinner { display: none; }
+
+.pe-wand--busy .pe-wand__icon { display: none; }
+.pe-wand--busy .pe-wand__spinner {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(167, 139, 250, 0.35);
+  border-top-color: #a78bfa;
   border-radius: 50%;
   animation: pe-spin 0.7s linear infinite;
-  flex-shrink: 0;
 }
-
-.pe-spinner { width: 18px; height: 18px; }
-.pe-spinner-sm { width: 14px; height: 14px; }
+.pe-wand--busy .pe-wand__caret { opacity: 0.4; pointer-events: none; }
 
 @keyframes pe-spin {
   to { transform: rotate(360deg); }
 }
 
-/* ── Error ──────────────────────────────────────────────────────────────── */
-.pe-error-msg {
-  font-size: 13px;
-  color: #991b1b;
+/* ── Mode menu (popover above the control) ───────────────────────────────── */
+.pe-menu {
+  position: fixed;
+  z-index: 2147483647;
+  min-width: 200px;
+  background: #1f2230;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  animation: pe-menu-in 0.12s ease;
 }
-.pe-error-msg a {
-  color: #7c3aed;
-  text-decoration: underline;
+
+.pe-menu-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
+  text-align: left;
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: background 0.12s;
+}
+.pe-menu-row:hover { background: rgba(167, 139, 250, 0.18); }
+
+.pe-menu-row--active { background: rgba(167, 139, 250, 0.12); }
+.pe-menu-row--active .pe-menu-label::after {
+  content: " ✓";
+  color: #a78bfa;
+}
+
+.pe-menu-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f4f4f5;
+}
+
+.pe-menu-desc {
+  font-size: 11px;
+  color: #a1a1aa;
+}
+
+@keyframes pe-menu-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Toast ──────────────────────────────────────────────────────────────── */
 .pe-toast {
   position: fixed;
-  bottom: 24px;
+  bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 2147483647;
   background: #1f2937;
   color: #f9fafb;
   padding: 9px 16px;
-  border-radius: 8px;
+  border-radius: 999px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 13px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   pointer-events: all;
   animation: pe-fadein 0.2s ease;
 }
 
-.pe-toast--revert { bottom: 80px; }
+.pe-toast--error { background: #7f1d1d; }
 
 .pe-toast-btn {
   background: none;
   border: none;
-  color: #a78bfa;
+  color: #c4b5fd;
   font-size: 13px;
   cursor: pointer;
   padding: 0;
-  font-weight: 500;
-  text-decoration: underline;
+  font-weight: 600;
 }
+.pe-toast--error .pe-toast-btn { color: #fca5a5; }
+.pe-toast-btn:hover { text-decoration: underline; }
 
 @keyframes pe-fadein {
   from { opacity: 0; transform: translateX(-50%) translateY(6px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-}
-
-/* ── Wand button ────────────────────────────────────────────────────────── */
-.pe-wand {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  background: none;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #6b7280;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
-  vertical-align: middle;
-  flex-shrink: 0;
-}
-
-.pe-wand:hover {
-  color: #7c3aed;
-  background: #f5f3ff;
-  border-color: #ddd6fe;
-}
-
-.pe-wand svg {
-  display: block;
-  pointer-events: none;
 }

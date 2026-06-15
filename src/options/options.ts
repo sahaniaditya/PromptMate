@@ -1,5 +1,5 @@
 import { loadSettings, saveSettings } from "../shared/storage";
-import type { ProviderKind } from "../shared/types";
+import type { EnhanceMode, ProviderKind } from "../shared/types";
 
 const PROVIDER_MODELS: Record<ProviderKind, string> = {
   anthropic: "claude-haiku-4-5-20251001",
@@ -33,7 +33,7 @@ async function load(): Promise<void> {
   ($("model") as HTMLInputElement).value = s.model;
   ($("apiKey") as HTMLInputElement).value = s.apiKey ?? "";
   ($("hotkeyEnabled") as HTMLInputElement).checked = s.hotkeyEnabled;
-  ($("autoDismiss") as HTMLInputElement).checked = s.autoDismissLeaveAlone;
+  ($("defaultMode") as HTMLSelectElement).value = s.defaultMode;
 
   updateKeyLink(s.provider);
 }
@@ -66,14 +66,14 @@ $("save").addEventListener("click", async () => {
   const model = ($("model") as HTMLInputElement).value.trim();
   const apiKey = ($("apiKey") as HTMLInputElement).value.trim();
   const hotkeyEnabled = ($("hotkeyEnabled") as HTMLInputElement).checked;
-  const autoDismissLeaveAlone = ($("autoDismiss") as HTMLInputElement).checked;
+  const defaultMode = ($("defaultMode") as HTMLSelectElement).value as EnhanceMode;
 
   if (!model) {
     showStatus("Model name is required.", true);
     return;
   }
 
-  await saveSettings({ provider, model, apiKey: apiKey || undefined, hotkeyEnabled, autoDismissLeaveAlone });
+  await saveSettings({ provider, model, apiKey: apiKey || undefined, hotkeyEnabled, defaultMode });
   showStatus("Settings saved.");
 });
 

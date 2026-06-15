@@ -27,7 +27,7 @@ export async function runEnhance(
   message: ContentToWorker,
   port: chrome.runtime.Port,
 ): Promise<void> {
-  if (message.type !== "ENHANCE_REQUEST" && message.type !== "ANSWER_QUESTIONS") return;
+  if (message.type !== "ENHANCE_REQUEST") return;
 
   const settings = await loadSettings();
 
@@ -58,29 +58,17 @@ export async function runEnhance(
   const startMsg: WorkerToContent = { type: "STREAM_START" };
   port.postMessage(startMsg);
 
-  // For ANSWER_QUESTIONS: build an augmented context that includes the answers
-  let ctx = message.ctx;
-  if (message.type === "ANSWER_QUESTIONS") {
-    const answerLines = Object.entries(message.answers)
-      .map(([id, answer]) => `[${id}]: ${answer}`)
-      .join("\n");
-    ctx = {
-      ...ctx,
-      prompt: `${ctx.prompt}\n\n[Answers to clarifying questions]\n${answerLines}`,
-    };
-  }
-
   try {
-    const result = await provider.triage(
-      ctx,
-      (text) => {
-        const delta: WorkerToContent = { type: "STREAM_DELTA", field: "improvedPrompt", text };
-        port.postMessage(delta);
+    const text = await provider.enhance(
+      message.ctx,
+      (delta) => {
+        const msg: WorkerToContent = { type: "STREAM_DELTA", text: delta };
+        port.postMessage(msg);
       },
       controller.signal,
     );
-    const resultMsg: WorkerToContent = { type: "RESULT", result };
-    port.postMessage(resultMsg);
+    const doneMsg: WorkerToContent = { type: "DONE", text };
+    port.postMessage(doneMsg);
   } catch (err) {
     if (classifyError(err) === "ABORT") return; // port disconnected — don't try to post
     const errMsg: WorkerToContent = {

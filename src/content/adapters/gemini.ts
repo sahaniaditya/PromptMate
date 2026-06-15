@@ -16,8 +16,8 @@ export const geminiAdapter: SiteAdapter = {
 
   findButtonAnchor() {
     return (
-      document.querySelector<HTMLElement>("button.send-button")?.parentElement ??
-      document.querySelector<HTMLElement>("button[aria-label='Send message']")?.parentElement ??
+      document.querySelector<HTMLElement>("button.send-button") ??
+      document.querySelector<HTMLElement>("button[aria-label='Send message']") ??
       null
     );
   },

@@ -5,4 +5,5 @@ dist/
 *.local
 coverage/
 prompt-enhancer-design.md
+.claude
 

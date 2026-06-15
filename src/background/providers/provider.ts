@@ -1,13 +1,13 @@
-import type { EnhanceContext, TriageResult } from "../../shared/types";
+import type { EnhanceContext } from "../../shared/types";
 
 export interface Provider {
   /**
-   * Runs the triage call. Calls onDelta with partial improvedPrompt text as it
-   * streams. Returns the fully-parsed TriageResult when the call completes.
+   * Streams the rewritten prompt. Calls onDelta with each text chunk as it
+   * arrives, and resolves with the full rewritten prompt when complete.
    */
-  triage(
+  enhance(
     ctx: EnhanceContext,
     onDelta: (text: string) => void,
     signal: AbortSignal,
-  ): Promise<TriageResult>;
+  ): Promise<string>;
 }

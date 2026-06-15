@@ -2,6 +2,11 @@ import type { ContentToWorker } from "../shared/messages";
 import { ENHANCE_PORT } from "../shared/messages";
 import { runEnhance } from "./orchestrator";
 
+// The panel's "Open settings" link asks the worker to open the options page
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === "OPEN_OPTIONS") chrome.runtime.openOptionsPage();
+});
+
 // Forward keyboard command as a message to the active tab's content script
 chrome.commands.onCommand.addListener(async (command) => {
   if (command !== "enhance-prompt") return;
