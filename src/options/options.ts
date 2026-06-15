@@ -8,6 +8,7 @@ import type {
   PromptLength,
   PromptTone,
   PromptType,
+  ThemeName,
 } from "../shared/types";
 
 const PROVIDER_MODELS: Record<ProviderKind, string> = {
@@ -44,8 +45,30 @@ async function load(): Promise<void> {
   ($("hotkeyEnabled") as HTMLInputElement).checked = s.hotkeyEnabled;
   ($("defaultMode") as HTMLSelectElement).value = s.defaultMode;
 
+  applyTheme(s.theme);
   updateKeyLink(s.provider);
 }
+
+function applyTheme(theme: ThemeName): void {
+  document.documentElement.setAttribute("data-theme", theme);
+  document.querySelectorAll<HTMLButtonElement>(".swatch").forEach((sw) => {
+    sw.classList.toggle("active", sw.dataset.theme === theme);
+  });
+}
+
+document.querySelectorAll<HTMLButtonElement>(".swatch").forEach((sw) => {
+  sw.addEventListener("click", () => {
+    const theme = sw.dataset.theme as ThemeName | undefined;
+    if (!theme) return;
+    applyTheme(theme);
+    saveSettings({ theme });
+  });
+});
+
+$("closePopup").addEventListener("click", () => {
+  // Closes the action popup. In a full tab, close the tab instead.
+  window.close();
+});
 
 function updateKeyLink(provider: ProviderKind): void {
   const link = $("keyLink") as HTMLAnchorElement;

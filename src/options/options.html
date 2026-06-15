@@ -7,16 +7,69 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* Theme palette (violet default). Swatches in the header switch these. */
+    :root, [data-theme="violet"] {
+      --accent: #7c3aed;
+      --accent-hover: #6d28d9;
+      --accent-soft: #ede9fe;
+      --accent-softer: #f5f3ff;
+      --accent-border: #ddd6fe;
+      --accent-ring: rgba(124, 58, 237, 0.12);
+      --bg: #f7f4fe;
+      --surface: #ffffff;
+    }
+    [data-theme="blue"] {
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-soft: #dbeafe;
+      --accent-softer: #eff6ff;
+      --accent-border: #bfdbfe;
+      --accent-ring: rgba(37, 99, 235, 0.12);
+      --bg: #f1f6ff;
+      --surface: #ffffff;
+    }
+    [data-theme="emerald"] {
+      --accent: #059669;
+      --accent-hover: #047857;
+      --accent-soft: #d1fae5;
+      --accent-softer: #ecfdf5;
+      --accent-border: #a7f3d0;
+      --accent-ring: rgba(5, 150, 105, 0.12);
+      --bg: #f0fbf5;
+      --surface: #ffffff;
+    }
+    [data-theme="rose"] {
+      --accent: #e11d48;
+      --accent-hover: #be123c;
+      --accent-soft: #ffe4e6;
+      --accent-softer: #fff1f2;
+      --accent-border: #fecdd3;
+      --accent-ring: rgba(225, 29, 72, 0.12);
+      --bg: #fff4f6;
+      --surface: #ffffff;
+    }
+    [data-theme="amber"] {
+      --accent: #d97706;
+      --accent-hover: #b45309;
+      --accent-soft: #fef3c7;
+      --accent-softer: #fffbeb;
+      --accent-border: #fde68a;
+      --accent-ring: rgba(217, 119, 6, 0.12);
+      --bg: #fffbf2;
+      --surface: #ffffff;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       font-size: 14px;
       color: #1a1a1a;
-      background: #fff;
+      background: var(--bg);
       width: 380px;
+      transition: background 0.2s;
     }
 
     .card {
-      background: #fff;
+      background: transparent;
       width: 100%;
       padding: 20px;
       display: flex;
@@ -29,6 +82,46 @@
       align-items: center;
       gap: 10px;
     }
+    .brand-text { flex: 1; }
+
+    .swatches { display: flex; gap: 6px; align-items: center; }
+    .swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      padding: 0;
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.12s;
+      outline: none;
+    }
+    .swatch:hover { transform: scale(1.15); }
+    .swatch.active {
+      border-color: #fff;
+      box-shadow: 0 0 0 2px currentColor;
+    }
+    .swatch[data-theme="violet"]  { background: #7c3aed; color: #7c3aed; }
+    .swatch[data-theme="blue"]    { background: #2563eb; color: #2563eb; }
+    .swatch[data-theme="emerald"] { background: #059669; color: #059669; }
+    .swatch[data-theme="rose"]    { background: #e11d48; color: #e11d48; }
+    .swatch[data-theme="amber"]   { background: #d97706; color: #d97706; }
+
+    .close-popup {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      border-radius: 7px;
+      cursor: pointer;
+      color: #9ca3af;
+      margin-left: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .close-popup:hover { color: #374151; background: rgba(0, 0, 0, 0.06); }
+    .close-popup svg { display: block; pointer-events: none; }
     .brand-icon {
       width: 36px;
       height: 36px;
@@ -60,7 +153,7 @@
       outline: none;
       transition: border-color 0.15s;
     }
-    select:focus, input:focus, textarea:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+    select:focus, input:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
 
     textarea { resize: vertical; min-height: 60px; line-height: 1.4; }
 
@@ -72,10 +165,10 @@
 
     .gen-output-card {
       position: relative;
-      border: 1px solid #e9e5fb;
-      background: linear-gradient(180deg, #faf9ff 0%, #f9fafb 100%);
+      border: 1px solid var(--accent-border);
+      background: linear-gradient(180deg, var(--accent-softer) 0%, #f9fafb 100%);
       border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(124, 58, 237, 0.06);
+      box-shadow: 0 1px 3px var(--accent-ring);
     }
     .gen-output-head {
       display: flex;
@@ -86,7 +179,7 @@
       font-weight: 600;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: #8b7bb8;
+      color: var(--accent-hover);
     }
     .gen-output {
       padding: 8px 14px 14px;
@@ -117,7 +210,7 @@
       transition: color 0.15s, background 0.15s, border-color 0.15s;
       backdrop-filter: blur(2px);
     }
-    .gen-copy-icon:hover { color: #6d28d9; background: #f5f3ff; border-color: #ddd6fe; }
+    .gen-copy-icon:hover { color: var(--accent-hover); background: var(--accent-softer); border-color: var(--accent-border); }
     .gen-copy-icon:active { transform: scale(0.92); }
     .gen-copy-icon svg { display: block; pointer-events: none; }
     .gen-copy-icon .icon-check { display: none; }
@@ -150,7 +243,7 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    .toggle input:checked + .toggle-track { background: #7c3aed; }
+    .toggle input:checked + .toggle-track { background: var(--accent); }
     .toggle-thumb {
       position: absolute;
       top: 3px;
@@ -190,7 +283,7 @@
     .tab:hover { color: #374151; }
     .tab.active {
       background: #fff;
-      color: #6d28d9;
+      color: var(--accent-hover);
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
     .tab-panel { display: none; flex-direction: column; gap: 20px; }
@@ -207,8 +300,8 @@
       border: none;
       transition: background 0.15s;
     }
-    .btn-primary { background: #7c3aed; color: #fff; }
-    .btn-primary:hover { background: #6d28d9; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
     .btn-ghost { background: none; color: #6b7280; }
     .btn-ghost:hover { background: #f3f4f6; }
 
@@ -238,7 +331,7 @@
     }
     .key-toggle:hover { color: #374151; }
 
-    a { color: #7c3aed; text-decoration: none; }
+    a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
   </style>
 </head>
@@ -247,10 +340,23 @@
     <!-- Brand -->
     <div class="brand">
       <img class="brand-icon" src="../../icons/icon-128.png" alt="PromptMate" />
-      <div>
+      <div class="brand-text">
         <div class="brand-name">PromptMate</div>
         <div class="brand-tagline">Thinks before you send.</div>
       </div>
+      <div class="swatches" id="swatches" role="group" aria-label="Theme">
+        <button class="swatch" data-theme="violet" title="Violet" aria-label="Violet theme"></button>
+        <button class="swatch" data-theme="blue" title="Blue" aria-label="Blue theme"></button>
+        <button class="swatch" data-theme="emerald" title="Emerald" aria-label="Emerald theme"></button>
+        <button class="swatch" data-theme="rose" title="Rose" aria-label="Rose theme"></button>
+        <button class="swatch" data-theme="amber" title="Amber" aria-label="Amber theme"></button>
+      </div>
+      <button class="close-popup" id="closePopup" type="button" title="Close" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+        </svg>
+      </button>
     </div>
 
     <hr class="divider" />

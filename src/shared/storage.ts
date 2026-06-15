@@ -9,6 +9,7 @@ const DEFAULT_SETTINGS: Settings = {
   proxyUrl: undefined,
   hotkeyEnabled: true,
   defaultMode: "refine",
+  theme: "violet",
 };
 
 export async function loadSettings(): Promise<Settings> {

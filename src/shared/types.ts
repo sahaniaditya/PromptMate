@@ -29,6 +29,8 @@ export interface EnhanceContext {
 
 export type ProviderKind = "anthropic" | "openai" | "proxy";
 
+export type ThemeName = "violet" | "blue" | "emerald" | "rose" | "amber";
+
 export interface Settings {
   provider: ProviderKind;
   model: string;
@@ -38,6 +40,7 @@ export interface Settings {
   defaultMode: EnhanceMode;
   /** User-dragged position (viewport coords). null = auto-anchor to the input. */
   wandPosition?: { x: number; y: number } | null;
+  theme: ThemeName;
 }
 
 export type ErrorCode =
