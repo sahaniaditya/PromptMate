@@ -76,36 +76,142 @@ function onTrigger(adapter: SiteAdapter, mode: EnhanceMode): void {
 let controlEl: HTMLElement | null = null;
 let closeMenu: (() => void) | null = null;
 
+const ANCHOR_GAP = 8;
+const EDGE_MARGIN = 4;
+const DRAG_THRESHOLD = 4;
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi));
+
 export function bootstrap(adapter: SiteAdapter): void {
+  // User-dragged position (viewport coords); null = auto-anchor to the input.
+  let customPos: { x: number; y: number } | null = null;
+  let suppressClick = false;
+
   loadSettings().then((s) => {
     defaultMode = s.defaultMode;
+    customPos = s.wandPosition ?? null;
   });
 
-  // Insert the wand as a real flex sibling inside the host's trailing button
-  // group. The browser then aligns and reflows it automatically — no positioning
-  // JS, no scroll/resize observers. We only re-insert if the SPA wipes it out.
-  const ensureInjected = () => {
-    if (controlEl && controlEl.isConnected) return;
+  // Universal floating overlay: the wand lives in <body> as a fixed-position
+  // element. By default it hugs the input box's right edge; once dragged, it
+  // stays at the user's chosen spot. Site-agnostic — needs only the input's
+  // on-screen location, not the host's toolbar layout.
+  controlEl = createWandControl(
+    () => { if (!suppressClick) onTrigger(adapter, defaultMode); },
+    () => { if (!suppressClick) toggleMenu(adapter); },
+  );
+  controlEl.style.position = "fixed";
+  controlEl.style.display = "none";
+  document.body.appendChild(controlEl);
 
-    const sendBtn = adapter.findButtonAnchor();
-    if (!sendBtn) return;
+  // A continuous rAF loop keeps the wand pinned through every layout change —
+  // scroll, window/textbox resize, SPA reflow, animations — with no missed
+  // triggers. Cheap: a rect read + a style write only when the position changes.
+  let lastTop = NaN;
+  let lastLeft = NaN;
+  let dragging = false;
 
-    const group = findTrailingGroup(sendBtn);
-    if (!controlEl) {
-      controlEl = createWandControl(
-        () => onTrigger(adapter, defaultMode),
-        () => toggleMenu(adapter),
-      );
+  const hide = () => {
+    if (controlEl && controlEl.style.display !== "none") {
+      controlEl.style.display = "none";
+      lastTop = NaN;
+      lastLeft = NaN;
     }
-    // Sit first in the trailing group so the order reads: wand · mic · send.
-    group.insertBefore(controlEl, group.firstChild);
   };
 
-  ensureInjected();
+  const positionWand = () => {
+    if (!controlEl || closeMenu || dragging) return; // hold still while open/dragging
+    const input = adapter.findInput();
+    if (!input) return hide();
+    const r = input.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) return hide();
 
-  // Re-insert on SPA re-renders that replace the composer/toolbar.
-  const observer = new MutationObserver(() => ensureInjected());
-  observer.observe(document.body, { childList: true, subtree: true });
+    const w = controlEl.offsetWidth || 58;
+    const h = controlEl.offsetHeight || 34;
+
+    let left: number;
+    let top: number;
+    if (customPos) {
+      // Keep the user's chosen spot, clamped so it stays on-screen.
+      left = clamp(customPos.x, EDGE_MARGIN, window.innerWidth - w - EDGE_MARGIN);
+      top = clamp(customPos.y, EDGE_MARGIN, window.innerHeight - h - EDGE_MARGIN);
+    } else {
+      // Default: just outside the input's right edge, vertically centered.
+      left = r.right + ANCHOR_GAP;
+      if (left + w > window.innerWidth - 8) left = r.right - w - ANCHOR_GAP; // fall inside if no room
+      top = r.top + (r.height - h) / 2;
+    }
+
+    if (controlEl.style.display === "none") controlEl.style.display = "";
+    if (left !== lastLeft || top !== lastTop) {
+      controlEl.style.left = `${left}px`;
+      controlEl.style.top = `${top}px`;
+      lastLeft = left;
+      lastTop = top;
+    }
+  };
+
+  const tick = () => {
+    positionWand();
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+
+  // ── Drag to reposition ──────────────────────────────────────────────────
+  let startX = 0;
+  let startY = 0;
+  let origLeft = 0;
+  let origTop = 0;
+  let moved = false;
+
+  controlEl.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || !controlEl) return;
+    suppressClick = false;
+    const rect = controlEl.getBoundingClientRect();
+    origLeft = rect.left;
+    origTop = rect.top;
+    startX = e.clientX;
+    startY = e.clientY;
+    dragging = true;
+    moved = false;
+    controlEl.setPointerCapture(e.pointerId);
+  });
+
+  controlEl.addEventListener("pointermove", (e) => {
+    if (!dragging || !controlEl) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    if (!moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return; // still a click
+    moved = true;
+    controlEl.classList.add("pe-wand--dragging");
+    const w = controlEl.offsetWidth;
+    const h = controlEl.offsetHeight;
+    const nx = clamp(origLeft + dx, EDGE_MARGIN, window.innerWidth - w - EDGE_MARGIN);
+    const ny = clamp(origTop + dy, EDGE_MARGIN, window.innerHeight - h - EDGE_MARGIN);
+    controlEl.style.left = `${nx}px`;
+    controlEl.style.top = `${ny}px`;
+    lastLeft = nx;
+    lastTop = ny;
+  });
+
+  const endDrag = (e: PointerEvent) => {
+    if (!dragging || !controlEl) return;
+    dragging = false;
+    controlEl.classList.remove("pe-wand--dragging");
+    try {
+      controlEl.releasePointerCapture(e.pointerId);
+    } catch {
+      /* pointer already released */
+    }
+    if (moved) {
+      // Persist the new spot and suppress the click that follows pointerup.
+      customPos = { x: lastLeft, y: lastTop };
+      saveSettings({ wandPosition: customPos });
+      suppressClick = true;
+    }
+  };
+  controlEl.addEventListener("pointerup", endDrag);
+  controlEl.addEventListener("pointercancel", endDrag);
 
   // Hotkey forwarded from service worker → run the default mode.
   chrome.runtime.onMessage.addListener((msg) => {
@@ -131,28 +237,6 @@ function toggleMenu(adapter: SiteAdapter): void {
 function setWandBusy(busy: boolean): void {
   if (!controlEl) return;
   controlEl.classList.toggle("pe-wand--busy", busy);
-}
-
-/**
- * Finds the trailing button group: the smallest ancestor of the send button
- * that holds 2+ interactive controls (mic + send / voice) but is still a tight
- * group, not the whole composer bar. We inject the wand into this container as a
- * flex sibling so it aligns and reflows with the host's own buttons.
- */
-function findTrailingGroup(sendBtn: HTMLElement): HTMLElement {
-  const scope = sendBtn.closest("form") ?? document.body;
-  const formW = scope.getBoundingClientRect().width || window.innerWidth;
-
-  let node: HTMLElement | null = sendBtn.parentElement;
-  let best: HTMLElement = sendBtn.parentElement ?? sendBtn;
-  for (let i = 0; i < 5 && node && node !== scope; i++) {
-    const count = node.querySelectorAll("button, [role='button']").length;
-    const w = node.getBoundingClientRect().width;
-    // A genuine trailing cluster: multiple controls, but not the full-width bar.
-    if (count >= 2 && w <= formW * 0.6) best = node;
-    node = node.parentElement;
-  }
-  return best;
 }
 
 /**

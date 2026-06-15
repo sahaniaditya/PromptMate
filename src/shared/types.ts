@@ -16,6 +16,8 @@ export interface Settings {
   proxyUrl?: string;
   hotkeyEnabled: boolean;
   defaultMode: EnhanceMode;
+  /** User-dragged position (viewport coords). null = auto-anchor to the input. */
+  wandPosition?: { x: number; y: number } | null;
 }
 
 export type ErrorCode =
