@@ -44,6 +44,7 @@ async function load(): Promise<void> {
   ($("apiKey") as HTMLInputElement).value = s.apiKey ?? "";
   ($("hotkeyEnabled") as HTMLInputElement).checked = s.hotkeyEnabled;
   ($("defaultMode") as HTMLSelectElement).value = s.defaultMode;
+  ($("defaultType") as HTMLSelectElement).value = s.defaultType;
 
   applyTheme(s.theme);
   updateKeyLink(s.provider);
@@ -99,13 +100,14 @@ $("save").addEventListener("click", async () => {
   const apiKey = ($("apiKey") as HTMLInputElement).value.trim();
   const hotkeyEnabled = ($("hotkeyEnabled") as HTMLInputElement).checked;
   const defaultMode = ($("defaultMode") as HTMLSelectElement).value as EnhanceMode;
+  const defaultType = ($("defaultType") as HTMLSelectElement).value as PromptType;
 
   if (!model) {
     showStatus("Model name is required.", true);
     return;
   }
 
-  await saveSettings({ provider, model, apiKey: apiKey || undefined, hotkeyEnabled, defaultMode });
+  await saveSettings({ provider, model, apiKey: apiKey || undefined, hotkeyEnabled, defaultMode, defaultType });
   showStatus("Settings saved.");
 });
 

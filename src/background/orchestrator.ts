@@ -37,7 +37,7 @@ export async function handlePortMessage(
   let system: string;
   let user: string;
   if (message.type === "ENHANCE_REQUEST") {
-    system = buildSystemPrompt(message.ctx.mode);
+    system = buildSystemPrompt(message.ctx.mode, message.ctx.promptType);
     user = buildUserMessage(message.ctx.prompt, message.ctx.selection);
   } else if (message.type === "GENERATE_REQUEST") {
     system = buildGenerateSystemPrompt(message.params);

@@ -25,6 +25,7 @@ export interface EnhanceContext {
   selection?: string;
   siteId: string;
   mode: EnhanceMode;
+  promptType?: PromptType;
 }
 
 export type ProviderKind = "anthropic" | "openai" | "proxy";
@@ -38,6 +39,8 @@ export interface Settings {
   proxyUrl?: string;
   hotkeyEnabled: boolean;
   defaultMode: EnhanceMode;
+  /** Domain the wand tailors enhancements toward, on any site. */
+  defaultType: PromptType;
   /** User-dragged position (viewport coords). null = auto-anchor to the input. */
   wandPosition?: { x: number; y: number } | null;
   theme: ThemeName;

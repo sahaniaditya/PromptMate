@@ -1,12 +1,13 @@
 import type { SiteAdapter } from "./adapters/adapter";
 import type { WorkerToContent } from "../shared/messages";
 import { ENHANCE_PORT } from "../shared/messages";
-import type { EnhanceContext, EnhanceMode } from "../shared/types";
+import type { EnhanceContext, EnhanceMode, PromptType } from "../shared/types";
 import { loadSettings, saveSettings } from "../shared/storage";
 import { openModeMenu, showErrorToast, showUndoToast } from "./panel/panel";
 
 let inflight = false;
 let defaultMode: EnhanceMode = "refine";
+let defaultType: PromptType = "general";
 
 function getSelection(): string | undefined {
   const sel = window.getSelection()?.toString().trim();
@@ -27,6 +28,7 @@ function onTrigger(adapter: SiteAdapter, mode: EnhanceMode): void {
     selection: getSelection(),
     siteId: adapter.id,
     mode,
+    promptType: defaultType,
   };
 
   inflight = true;
@@ -88,7 +90,15 @@ export function bootstrap(adapter: SiteAdapter): void {
 
   loadSettings().then((s) => {
     defaultMode = s.defaultMode;
+    defaultType = s.defaultType;
     customPos = s.wandPosition ?? null;
+  });
+
+  // Keep the type in sync if it's changed in the options popup mid-session.
+  chrome.storage.onChanged.addListener((changes) => {
+    const next = changes.settings?.newValue as { defaultType?: PromptType; defaultMode?: EnhanceMode } | undefined;
+    if (next?.defaultType) defaultType = next.defaultType;
+    if (next?.defaultMode) defaultMode = next.defaultMode;
   });
 
   // Universal floating overlay: the wand lives in <body> as a fixed-position
