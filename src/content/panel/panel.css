@@ -22,8 +22,12 @@
   user-select: none;
 }
 
-.pe-wand--dragging {
+.pe-wand--dragging,
+.pe-wand--dragging .pe-wand__main,
+.pe-wand--dragging .pe-wand__caret {
   cursor: grabbing;
+}
+.pe-wand--dragging {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
 }
 

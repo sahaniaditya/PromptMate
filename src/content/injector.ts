@@ -85,7 +85,6 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, hi
 export function bootstrap(adapter: SiteAdapter): void {
   // User-dragged position (viewport coords); null = auto-anchor to the input.
   let customPos: { x: number; y: number } | null = null;
-  let suppressClick = false;
 
   loadSettings().then((s) => {
     defaultMode = s.defaultMode;
@@ -96,10 +95,7 @@ export function bootstrap(adapter: SiteAdapter): void {
   // element. By default it hugs the input box's right edge; once dragged, it
   // stays at the user's chosen spot. Site-agnostic — needs only the input's
   // on-screen location, not the host's toolbar layout.
-  controlEl = createWandControl(
-    () => { if (!suppressClick) onTrigger(adapter, defaultMode); },
-    () => { if (!suppressClick) toggleMenu(adapter); },
-  );
+  controlEl = createWandControl();
   controlEl.style.position = "fixed";
   controlEl.style.display = "none";
   document.body.appendChild(controlEl);
@@ -157,19 +153,23 @@ export function bootstrap(adapter: SiteAdapter): void {
   };
   requestAnimationFrame(tick);
 
-  // ── Drag to reposition ──────────────────────────────────────────────────
+  // ── Click + drag (unified pointer handling) ───────────────────────────────
+  // We capture the pointer on pointerdown so a drag tracks reliably even when
+  // the cursor leaves the small pill. Because capture retargets the native
+  // click, we don't use click listeners at all — a press that doesn't move is
+  // treated as a click and routed to the pressed zone here.
   let startX = 0;
   let startY = 0;
   let origLeft = 0;
   let origTop = 0;
   let moved = false;
-
   let pressing = false;
-  let pointerId = -1;
+  let pressedCaret = false;
 
   controlEl.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || !controlEl) return;
-    suppressClick = false;
+    e.preventDefault();
+    pressedCaret = !!(e.target as Element).closest(".pe-wand__caret");
     const rect = controlEl.getBoundingClientRect();
     origLeft = rect.left;
     origTop = rect.top;
@@ -177,10 +177,11 @@ export function bootstrap(adapter: SiteAdapter): void {
     startY = e.clientY;
     pressing = true;
     moved = false;
-    pointerId = e.pointerId;
-    // NOTE: do NOT capture the pointer here — capturing on press retargets the
-    // follow-up click to this container, so the sparkle/caret buttons never get
-    // their click. We only capture once a real drag starts (see pointermove).
+    try {
+      controlEl.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
   });
 
   controlEl.addEventListener("pointermove", (e) => {
@@ -189,15 +190,12 @@ export function bootstrap(adapter: SiteAdapter): void {
     const dy = e.clientY - startY;
     if (!moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return; // still a click
     if (!moved) {
-      // A genuine drag began — now capture so moves track off-element, and pause
-      // the auto-positioner.
       moved = true;
-      dragging = true;
+      dragging = true; // pause the auto-positioner
       controlEl.classList.add("pe-wand--dragging");
-      try {
-        controlEl.setPointerCapture(pointerId);
-      } catch {
-        /* ignore */
+      if (closeMenu) {
+        closeMenu();
+        closeMenu = null;
       }
     }
     const w = controlEl.offsetWidth;
@@ -210,25 +208,30 @@ export function bootstrap(adapter: SiteAdapter): void {
     lastTop = ny;
   });
 
-  const endDrag = (e: PointerEvent) => {
+  const endPress = (e: PointerEvent) => {
     if (!pressing || !controlEl) return;
     pressing = false;
-    if (!moved) return; // plain click — let the button's click handler run
-
-    dragging = false;
-    controlEl.classList.remove("pe-wand--dragging");
     try {
       controlEl.releasePointerCapture(e.pointerId);
     } catch {
-      /* pointer already released */
+      /* already released */
     }
-    // Persist the new spot and suppress the click that follows pointerup.
-    customPos = { x: lastLeft, y: lastTop };
-    saveSettings({ wandPosition: customPos });
-    suppressClick = true;
+
+    if (moved) {
+      // It was a drag → persist the new spot.
+      dragging = false;
+      controlEl.classList.remove("pe-wand--dragging");
+      customPos = { x: lastLeft, y: lastTop };
+      saveSettings({ wandPosition: customPos });
+      return;
+    }
+
+    // It was a click → route to the pressed zone.
+    if (pressedCaret) toggleMenu(adapter);
+    else onTrigger(adapter, defaultMode);
   };
-  controlEl.addEventListener("pointerup", endDrag);
-  controlEl.addEventListener("pointercancel", endDrag);
+  controlEl.addEventListener("pointerup", endPress);
+  controlEl.addEventListener("pointercancel", endPress);
 
   // Hotkey forwarded from service worker → run the default mode.
   chrome.runtime.onMessage.addListener((msg) => {
@@ -258,36 +261,28 @@ function setWandBusy(busy: boolean): void {
 
 /**
  * Builds the split-button control: one rounded pill with a sparkle zone (runs
- * the default mode) and a caret zone (opens the mode menu).
+ * the default mode) and a caret zone (opens the mode menu). Click and drag are
+ * handled by pointer events in bootstrap — not native click listeners — so that
+ * dragging can capture the pointer reliably from the first move.
  */
-function createWandControl(onRun: () => void, onToggleMenu: () => void): HTMLElement {
+function createWandControl(): HTMLElement {
   const wrap = document.createElement("div");
   wrap.className = "pe-wand";
 
-  const main = document.createElement("button");
+  const main = document.createElement("div");
   main.className = "pe-wand__main";
-  main.type = "button";
   main.title = "Enhance prompt (Ctrl+Shift+E)";
+  main.setAttribute("role", "button");
   main.setAttribute("aria-label", "Enhance prompt with PromptMate");
   main.appendChild(buildSparkleSvg());
   main.appendChild(buildSpinner());
-  main.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onRun();
-  });
 
-  const caret = document.createElement("button");
+  const caret = document.createElement("div");
   caret.className = "pe-wand__caret";
-  caret.type = "button";
   caret.title = "Choose enhance mode";
+  caret.setAttribute("role", "button");
   caret.setAttribute("aria-label", "Choose enhance mode");
   caret.appendChild(buildCaretSvg());
-  caret.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onToggleMenu();
-  });
 
   wrap.appendChild(main);
   wrap.appendChild(caret);
